@@ -5,14 +5,18 @@ import asyncio
 import argparse
 
 import telepot
-from telepot.loop import MessageLoop
-from telepot.delegate import pave_event_space, per_chat_id, create_open
-
 from telepot.aio.loop import MessageLoop
 from telepot.aio.helper import ChatHandler
-from telepot.aio.delegate import per_inline_from_id, create_open, pave_event_space
-from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
-from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+from telepot.aio.delegate import (
+    per_chat_id,
+    create_open,
+    pave_event_space)
+from telepot.namedtuple import (
+    ReplyKeyboardMarkup,
+    KeyboardButton)
+from telepot.namedtuple import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton)
 
 from yelpapi import YelpAPI
 
@@ -22,15 +26,19 @@ from motionless import DecoratedMap, LatLonMarker
 
 
 # BOT MESSAGES
-WELCOME_MESSAGE = 'Welcome to BarBot. Find any bars nearby'
+WELCOME_MESSAGE = emoji.emojize('Welcome to BarBot :wine_glass:. \
+Find any bars nearby.')
+
 HELP_MESSAGE = '''Click button to find bars near your location. A map \
 with all bars near your location is shown. Click in the inline buttons \
 to get more information about the bar'''
+
 
 # DEFAULT PARAMETERS
 NUMBER_OF_BARS = 6
 NUMBER_OF_OPTIONS_PER_ROW = 3
 DELEGATOR_TIMEOUT = 1200
+
 
 Bar = collections.namedtuple(
     'Bar',
@@ -40,6 +48,7 @@ Bar = collections.namedtuple(
 def search_bars_nearby(latitude, longitude, limit):
     """This functions returns the bars near a specific location using
     the YELP API
+
 
     :param latitude: Latitude of the coordinate to search bars nearby
     :param longitude: Longitude of the coordinate to search bars nearby
@@ -80,8 +89,8 @@ def search_bars_nearby(latitude, longitude, limit):
 
 def create_map(center_lat, center_lon, markers):
     """Create the URL for a static google map centered in latitude
-    `center_lat` and longitude `longitude`. It also shows in the map
-    markers in the given coordinates labeled with numbers.
+    `center_lat` and longitude `center_lon`. It shows in the map
+    markers labeled with numbers in the given coordinates.
 
 
     :param center_lat: Latitude of the center of the map
@@ -133,7 +142,10 @@ class Bar_Bot_Handler(ChatHandler):
             longitude = location["longitude"]
             latitude = location["latitude"]
 
-            self._list_of_bars = search_bars_nearby(latitude, longitude, limit=NUMBER_OF_BARS)
+            self._list_of_bars = search_bars_nearby(
+                latitude,
+                longitude,
+                limit=NUMBER_OF_BARS)
 
             inline_keyboard = []
             list_of_map_markers = []
@@ -188,7 +200,7 @@ class Bar_Bot_Handler(ChatHandler):
             text = msg["text"].strip().lower()
 
             if text == "/start":
-                self.sender.sendMessage(
+                await self.sender.sendMessage(
                     WELCOME_MESSAGE,
                     reply_markup=self.main_keyboard
                 )
@@ -225,21 +237,21 @@ class Bar_Bot_Handler(ChatHandler):
 
             # Send to telegram more information about the bar: phone,
             # address and geo location.
-            text_for_bar_info = "*%s*" % bar.name
+            extra_info_of_bar = "*%s*" % bar.name
 
             if bar.display_phone:
-                text_for_bar_info += "\n:telephone: {display_phone}\n".format(
+                extra_info_of_bar += "\n:telephone: {display_phone}\n".format(
                     display_phone=bar.display_phone)
 
             if bar.display_address:
-                text_for_bar_info += "\n" + bar.display_address
+                extra_info_of_bar += "\n" + bar.display_address
 
-            text_for_bar_info = emoji.emojize(
-                text_for_bar_info,
+            extra_info_of_bar = emoji.emojize(
+                extra_info_of_bar,
                 use_aliases=True)
 
             await self.sender.sendMessage(
-                text_for_bar_info,
+                extra_info_of_bar,
                 parse_mode="Markdown"
             )
 
