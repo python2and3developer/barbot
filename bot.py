@@ -2,6 +2,7 @@ import sys
 import time
 import collections
 import asyncio
+import argparse
 
 import telepot
 from telepot.loop import MessageLoop
@@ -20,13 +21,6 @@ import emoji
 from motionless import DecoratedMap, LatLonMarker
 
 
-# Credentials
-TELEGRAM_TOKEN = '568558655:AAHhQeMgvaSSOvAnwxtRD-fbIvKUU_VZYjY'
-
-YELP_API_KEY = 'Z-X7gH4iVODsOlnzPuoCbjg75d1XONY4Kh4YnvgSMucEqWL3wuCpjn6\
-MKnjOul0TmPvmHAXUyOvhkRaUqO4KE-gR1jCkl18Phzqcy0rEUAMn-l5O9W8rUBHow60QW3\
-Yx'
-
 # BOT MESSAGES
 WELCOME_MESSAGE = 'Welcome to BarBot. Find any bars nearby'
 HELP_MESSAGE = '''Click button to find bars near your location. A map \
@@ -37,8 +31,6 @@ to get more information about the bar'''
 NUMBER_OF_BARS = 6
 NUMBER_OF_OPTIONS_PER_ROW = 3
 DELEGATOR_TIMEOUT = 1200
-
-yelp_api = YelpAPI(YELP_API_KEY)
 
 Bar = collections.namedtuple(
     'Bar',
@@ -259,18 +251,31 @@ class Bar_Bot_Handler(ChatHandler):
                 )
 
 
-bar_bot = telepot.aio.DelegatorBot(TELEGRAM_TOKEN, [
-    pave_event_space()(
-        per_chat_id(),
-        create_open,
-        Bar_Bot_Handler,
-        timeout=DELEGATOR_TIMEOUT,
-        include_callback_query=True)
-])
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("telegram_token", help="Token for the telegram bot.\
+To get a new token, ask to bot father to create a new bot")
+    parser.add_argument("yelp_api_key", help="Yelp Api Key")
 
-loop = asyncio.get_event_loop()
+    args = parser.parse_args()
 
-loop.create_task(MessageLoop(bar_bot).run_forever())
-print('Listening ...')
+    TELEGRAM_TOKEN = args.telegram_token
+    YELP_API_KEY = args.yelp_api_key
 
-loop.run_forever()
+    yelp_api = YelpAPI(YELP_API_KEY)
+
+    bar_bot = telepot.aio.DelegatorBot(TELEGRAM_TOKEN, [
+        pave_event_space()(
+            per_chat_id(),
+            create_open,
+            Bar_Bot_Handler,
+            timeout=DELEGATOR_TIMEOUT,
+            include_callback_query=True)
+    ])
+
+    loop = asyncio.get_event_loop()
+
+    loop.create_task(MessageLoop(bar_bot).run_forever())
+    print('Listening ...')
+
+    loop.run_forever()
