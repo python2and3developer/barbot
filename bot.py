@@ -1,12 +1,15 @@
-from __future__ import unicode_literals
-
 import sys
 import time
 import collections
+import asyncio
 
 import telepot
 from telepot.loop import MessageLoop
 from telepot.delegate import pave_event_space, per_chat_id, create_open
+
+from telepot.aio.loop import MessageLoop
+from telepot.aio.helper import ChatHandler
+from telepot.aio.delegate import per_inline_from_id, create_open, pave_event_space
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -118,7 +121,7 @@ def create_map(center_lat, center_lon, markers):
     return url
 
 
-class Bar_Bot_Handler(telepot.helper.ChatHandler):
+class Bar_Bot_Handler(ChatHandler):
 
     main_keyboard = ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(
@@ -129,7 +132,7 @@ class Bar_Bot_Handler(telepot.helper.ChatHandler):
     def __init__(self, *args, **kwargs):
         super(Bar_Bot_Handler, self).__init__(*args, **kwargs)
 
-    def on_chat_message(self, msg):
+    async def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
 
         if content_type == "location":
@@ -177,13 +180,13 @@ class Bar_Bot_Handler(telepot.helper.ChatHandler):
             map_url = create_map(latitude, longitude, list_of_map_markers)
             self._map_url = map_url
 
-            self.sender.sendPhoto(map_url)
+            await self.sender.sendPhoto(map_url)
 
             self._inline_bar_selection_keyboard = InlineKeyboardMarkup(
                 inline_keyboard=inline_keyboard
             )
 
-            self.sender.sendMessage(
+            await self.sender.sendMessage(
                 "Select one option to get more information of the bar.",
                 reply_markup=self._inline_bar_selection_keyboard)
 
@@ -203,7 +206,7 @@ class Bar_Bot_Handler(telepot.helper.ChatHandler):
                 self.sender.sendMessage(HELP_MESSAGE)
                 return
 
-    def on_callback_query(self, msg):
+    async def on_callback_query(self, msg):
         query_id, from_id, query_data = telepot.glance(
                                     msg,
                                     flavor='callback_query')
@@ -217,10 +220,10 @@ class Bar_Bot_Handler(telepot.helper.ChatHandler):
             if self._first_time:
                 self._first_time = False
             else:
-                self.sender.sendPhoto(self._map_url)
+                await self.sender.sendPhoto(self._map_url)
 
                 # Send to telegram the menu of bars
-                self.sender.sendMessage(
+                await self.sender.sendMessage(
                     "Select a bar",
                     reply_markup=self._inline_bar_selection_keyboard
                 )
@@ -243,19 +246,20 @@ class Bar_Bot_Handler(telepot.helper.ChatHandler):
                 text_for_bar_info,
                 use_aliases=True)
 
-            self.sender.sendMessage(
+            await self.sender.sendMessage(
                 text_for_bar_info,
                 parse_mode="Markdown"
             )
 
             # Send to telegram the location of the bar
             if bar.coordinates:
-                self._message_location = self.sender.sendLocation(
+                await self.sender.sendLocation(
                     latitude=bar.coordinates["latitude"],
                     longitude=bar.coordinates["longitude"]
                 )
 
-bar_bot = telepot.DelegatorBot(TELEGRAM_TOKEN, [
+
+bar_bot = telepot.aio.DelegatorBot(TELEGRAM_TOKEN, [
     pave_event_space()(
         per_chat_id(),
         create_open,
@@ -263,7 +267,10 @@ bar_bot = telepot.DelegatorBot(TELEGRAM_TOKEN, [
         timeout=DELEGATOR_TIMEOUT,
         include_callback_query=True)
 ])
-MessageLoop(bar_bot).run_as_thread()
 
-while 1:
-    time.sleep(10)
+loop = asyncio.get_event_loop()
+
+loop.create_task(MessageLoop(bar_bot).run_forever())
+print('Listening ...')
+
+loop.run_forever()
